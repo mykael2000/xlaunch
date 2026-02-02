@@ -102,7 +102,8 @@ A complete dynamic PHP-based cryptocurrency presale platform with admin panel, u
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mykael2000/xlaunch.git
+   # Replace with your repository URL
+   git clone https://github.com/yourusername/xlaunch.git
    cd xlaunch
    ```
 

@@ -153,6 +153,8 @@ INSERT INTO settings (`key`, `value`, description) VALUES
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);
 
 -- Insert default admin (username: admin, password: Admin@123)
+-- ⚠️ SECURITY WARNING: CHANGE THIS PASSWORD IMMEDIATELY AFTER INSTALLATION!
+-- Login to admin panel and update password in settings or profile
 INSERT INTO admins (username, password, email) VALUES
 ('admin', '$2y$10$YPKmJ0yLJE3qO8GyFqNqAO8x8K0L9MZ0Z8F9vN5C7J6A5F8R4U2Vm', 'admin@xtoken.com')
 ON DUPLICATE KEY UPDATE password = VALUES(password);
