@@ -268,8 +268,11 @@ function resetLoginAttempts($email) {
 function getWalletAddress($crypto, $network = null) {
     $crypto = strtolower($crypto);
     
-    // For USDT and USDC, use network-specific wallet
-    if (in_array($crypto, ['usdt', 'usdc']) && $network) {
+    // For USDT and USDC, network is required
+    if (in_array($crypto, ['usdt', 'usdc'])) {
+        if (!$network) {
+            return null; // Network required for USDT/USDC
+        }
         if ($network === 'ERC20') {
             return getSetting('eth_wallet');
         } elseif ($network === 'TRC20') {

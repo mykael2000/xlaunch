@@ -8,7 +8,7 @@ require_once __DIR__ . '/../includes/auth.php';
 requireLogin();
 
 $userId = getUserId();
-$user = getUserById($userId);
+$user = getUserById($userId, true); // Include password for verification
 $balance = getUserBalance($userId);
 
 $tokenPrice = (float)getSetting('x_token_price', 5.44);

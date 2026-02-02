@@ -34,18 +34,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_withdrawal']))
         try {
             $pdo = getDB();
             
-            // Create withdrawal request
-            $stmt = $pdo->prepare("INSERT INTO withdrawals (user_id, amount, wallet_address, status, created_at) VALUES (?, ?, ?, 'pending', NOW())");
-            $stmt->execute([$userId, $amount, $walletAddress]);
+            // Start transaction
+            $pdo->beginTransaction();
             
-            // Deduct from balance (will be refunded if rejected)
-            $stmt = $pdo->prepare("UPDATE balances SET x_token_balance = x_token_balance - ? WHERE user_id = ?");
-            $stmt->execute([$amount, $userId]);
-            
-            $success = 'Withdrawal request submitted successfully. Awaiting admin approval.';
-            
-            // Refresh balance
-            $balance = getUserBalance($userId);
+            try {
+                // Create withdrawal request
+                $stmt = $pdo->prepare("INSERT INTO withdrawals (user_id, amount, wallet_address, status, created_at) VALUES (?, ?, ?, 'pending', NOW())");
+                $stmt->execute([$userId, $amount, $walletAddress]);
+                
+                // Deduct from balance (will be refunded if rejected)
+                $stmt = $pdo->prepare("UPDATE balances SET x_token_balance = x_token_balance - ? WHERE user_id = ?");
+                $stmt->execute([$amount, $userId]);
+                
+                // Commit transaction
+                $pdo->commit();
+                
+                $success = 'Withdrawal request submitted successfully. Awaiting admin approval.';
+                
+                // Refresh balance
+                $balance = getUserBalance($userId);
+            } catch (Exception $e) {
+                // Rollback on error
+                $pdo->rollBack();
+                throw $e;
+            }
         } catch (Exception $e) {
             $error = 'Failed to submit withdrawal request.';
         }

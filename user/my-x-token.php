@@ -26,7 +26,7 @@ try {
     $totalPurchased = 0;
     $bonusTokens = 0;
     foreach ($transactions as $tx) {
-        if ($tx['status'] === 'completed' || $tx['status'] === 'approved') {
+        if ($tx['status'] === 'completed') {
             $totalPurchased += $tx['amount'];
         }
     }

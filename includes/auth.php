@@ -260,12 +260,17 @@ function updateUserProfile($userId, $data) {
 /**
  * Get user by ID
  * @param int $userId
+ * @param bool $includePassword - Whether to include password field
  * @return array|null
  */
-function getUserById($userId) {
+function getUserById($userId, $includePassword = false) {
     try {
         $pdo = getDB();
-        $stmt = $pdo->prepare("SELECT id, email, fullname, wallet_address, created_at, status FROM users WHERE id = ?");
+        if ($includePassword) {
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        } else {
+            $stmt = $pdo->prepare("SELECT id, email, fullname, wallet_address, created_at, status FROM users WHERE id = ?");
+        }
         $stmt->execute([$userId]);
         return $stmt->fetch();
     } catch (Exception $e) {

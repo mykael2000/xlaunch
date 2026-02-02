@@ -38,10 +38,12 @@ try {
 // Handle payment confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_payment'])) {
     try {
-        $stmt = $pdo->prepare("UPDATE transactions SET status = 'approved' WHERE id = ?");
+        // Keep status as pending, just mark that user confirmed payment
+        // Admin will verify and change status later
+        $stmt = $pdo->prepare("UPDATE transactions SET admin_verified = 0 WHERE id = ?");
         $stmt->execute([$transaction['id']]);
         
-        $success = 'Payment confirmation submitted. Awaiting admin verification.';
+        $success = 'Payment confirmation received. Your transaction is now pending admin verification.';
         
         // Refresh transaction data
         $stmt = $pdo->prepare("SELECT * FROM transactions WHERE id = ?");
@@ -84,16 +86,20 @@ $walletAddress = getWalletAddress($transaction['crypto_type'], $transaction['net
             <?php endif; ?>
 
             <h1 style="text-align:center; margin-bottom:6px;">
-                <?php if ($transaction['status'] === 'approved' || $transaction['status'] === 'completed'): ?>
-                    Payment Submitted
+                <?php if ($transaction['status'] === 'completed'): ?>
+                    Payment Completed
+                <?php elseif ($transaction['status'] === 'approved'): ?>
+                    Payment Approved
                 <?php else: ?>
                     Waiting for Payment
                 <?php endif; ?>
             </h1>
 
             <p class="muted" style="text-align:center; margin-bottom:28px;">
-                <?php if ($transaction['status'] === 'approved' || $transaction['status'] === 'completed'): ?>
-                    Your payment is being verified by our team
+                <?php if ($transaction['status'] === 'completed'): ?>
+                    Your tokens have been credited to your account
+                <?php elseif ($transaction['status'] === 'approved'): ?>
+                    Your payment has been verified and is being processed
                 <?php else: ?>
                     Complete the payment using the details below
                 <?php endif; ?>
