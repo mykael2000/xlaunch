@@ -18,7 +18,7 @@ $usdEquivalent = $balance['x_token_balance'] * $tokenPrice;
 // Get transaction history
 try {
     $pdo = getDB();
-    $stmt = $pdo->prepare("SELECT * FROM transactions WHERE user_id = ? AND type = 'purchase' ORDER BY created_at DESC");
+    $stmt = $pdo->prepare("SELECT * FROM transactions WHERE user_id = ? AND type = 'buy' ORDER BY created_at DESC");
     $stmt->execute([$userId]);
     $transactions = $stmt->fetchAll();
     
@@ -26,7 +26,7 @@ try {
     $totalPurchased = 0;
     $bonusTokens = 0;
     foreach ($transactions as $tx) {
-        if ($tx['status'] === 'completed' || $tx['status'] === 'verified') {
+        if ($tx['status'] === 'completed' || $tx['status'] === 'approved') {
             $totalPurchased += $tx['amount'];
         }
     }
@@ -175,10 +175,10 @@ try {
 
                             <div>
                                 <?php 
-                                $statusColor = 'color:#facc15;'; // pending/submitted - yellow
-                                if ($tx['status'] === 'completed' || $tx['status'] === 'verified') {
+                                $statusColor = 'color:#facc15;'; // pending - yellow
+                                if ($tx['status'] === 'completed' || $tx['status'] === 'approved') {
                                     $statusColor = 'color:#22c55e;'; // green
-                                } elseif ($tx['status'] === 'failed' || $tx['status'] === 'cancelled') {
+                                } elseif ($tx['status'] === 'failed' || $tx['status'] === 'cancelled' || $tx['status'] === 'rejected') {
                                     $statusColor = 'color:#ef4444;'; // red
                                 }
                                 ?>

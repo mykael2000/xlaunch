@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_purchase'])) 
             $pdo = getDB();
             
             // Create transaction record
-            $stmt = $pdo->prepare("INSERT INTO transactions (user_id, type, amount, crypto_type, usd_amount, network, order_id, status, created_at) VALUES (?, 'purchase', ?, ?, ?, ?, ?, 'pending', NOW())");
+            $stmt = $pdo->prepare("INSERT INTO transactions (user_id, type, amount, crypto_type, usd_amount, network, order_id, status, created_at) VALUES (?, 'buy', ?, ?, ?, ?, ?, 'pending', NOW())");
             $stmt->execute([$userId, $tokens, $coin, $usdAmount, $network, $orderId]);
             
             $transactionId = $pdo->lastInsertId();

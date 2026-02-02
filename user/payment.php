@@ -38,7 +38,7 @@ try {
 // Handle payment confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_payment'])) {
     try {
-        $stmt = $pdo->prepare("UPDATE transactions SET status = 'submitted' WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE transactions SET status = 'approved' WHERE id = ?");
         $stmt->execute([$transaction['id']]);
         
         $success = 'Payment confirmation submitted. Awaiting admin verification.';
@@ -84,7 +84,7 @@ $walletAddress = getWalletAddress($transaction['crypto_type'], $transaction['net
             <?php endif; ?>
 
             <h1 style="text-align:center; margin-bottom:6px;">
-                <?php if ($transaction['status'] === 'submitted'): ?>
+                <?php if ($transaction['status'] === 'approved' || $transaction['status'] === 'completed'): ?>
                     Payment Submitted
                 <?php else: ?>
                     Waiting for Payment
@@ -92,7 +92,7 @@ $walletAddress = getWalletAddress($transaction['crypto_type'], $transaction['net
             </h1>
 
             <p class="muted" style="text-align:center; margin-bottom:28px;">
-                <?php if ($transaction['status'] === 'submitted'): ?>
+                <?php if ($transaction['status'] === 'approved' || $transaction['status'] === 'completed'): ?>
                     Your payment is being verified by our team
                 <?php else: ?>
                     Complete the payment using the details below
