@@ -39,8 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'bnb_wallet',
                 'trx_wallet',
                 'sol_wallet',
-                'xrp_wallet',
-                'registration_enabled'
+                'xrp_wallet'
             ];
             
             foreach ($settings as $key) {
@@ -48,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     updateSetting($key, $_POST[$key]);
                 }
             }
+            
+            // Handle checkbox (will be unset if unchecked)
+            updateSetting('registration_enabled', isset($_POST['registration_enabled']) ? '1' : '0');
             
             logActivity('Settings Updated', 'System settings updated', $adminId);
             $success = 'Settings updated successfully!';

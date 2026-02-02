@@ -141,6 +141,8 @@ INSERT INTO settings (`key`, `value`, description) VALUES
 ('xrp_wallet', 'rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh', 'XRP wallet address'),
 ('min_purchase', '50', 'Minimum X tokens purchase'),
 ('max_purchase', '1000000', 'Maximum X tokens purchase'),
+('min_withdrawal', '100', 'Minimum X tokens withdrawal'),
+('withdrawals_enabled', '1', 'Enable/disable withdrawals'),
 ('registration_enabled', '1', 'Enable/disable registration'),
 ('smtp_host', 'smtp.gmail.com', 'SMTP server host'),
 ('smtp_port', '587', 'SMTP server port'),

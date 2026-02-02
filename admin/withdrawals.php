@@ -36,17 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $pdo->beginTransaction();
                 
                 try {
-                    // Check if user has sufficient balance
-                    $balance = getUserBalance($withdrawal['user_id']);
-                    
-                    if ($balance['x_token_balance'] < $withdrawal['amount']) {
-                        throw new Exception('Insufficient balance');
-                    }
-                    
-                    // Deduct balance
-                    updateUserBalance($withdrawal['user_id'], -$withdrawal['amount']);
-                    
-                    // Update withdrawal status
+                    // Update withdrawal status (balance already deducted when request was created)
                     $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'completed', processed_at = NOW() WHERE id = ?");
                     $stmt->execute([$withdrawalId]);
                     
@@ -67,17 +57,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } elseif ($action === 'reject') {
                 $notes = $_POST['admin_notes'] ?? '';
                 
-                // Update withdrawal status
-                $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'rejected', admin_notes = ?, processed_at = NOW() WHERE id = ?");
-                $stmt->execute([$notes, $withdrawalId]);
+                $pdo->beginTransaction();
                 
-                // Send email
-                sendWithdrawalRejectedEmail($withdrawal['email'], $withdrawal, $notes);
-                
-                // Log activity
-                logActivity('Withdrawal Rejected', "Rejected withdrawal ID: $withdrawalId. Reason: $notes", $adminId, $withdrawal['user_id']);
-                
-                $success = "Withdrawal rejected successfully!";
+                try {
+                    // Refund the balance (since it was deducted when request was created)
+                    updateUserBalance($withdrawal['user_id'], $withdrawal['amount']);
+                    
+                    // Update withdrawal status
+                    $stmt = $pdo->prepare("UPDATE withdrawals SET status = 'rejected', admin_notes = ?, processed_at = NOW() WHERE id = ?");
+                    $stmt->execute([$notes, $withdrawalId]);
+                    
+                    $pdo->commit();
+                    
+                    // Send email
+                    sendWithdrawalRejectedEmail($withdrawal['email'], $withdrawal, $notes);
+                    
+                    // Log activity
+                    logActivity('Withdrawal Rejected', "Rejected withdrawal ID: $withdrawalId. Reason: $notes", $adminId, $withdrawal['user_id']);
+                    
+                    $success = "Withdrawal rejected successfully!";
+                } catch (Exception $e) {
+                    $pdo->rollBack();
+                    $error = "Failed to reject withdrawal: " . $e->getMessage();
+                }
             }
         } else {
             $error = "Withdrawal not found";

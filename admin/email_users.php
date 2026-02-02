@@ -45,22 +45,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sentCount = 0;
                 $failCount = 0;
                 
+                // Build email template once
+                $bodyTemplate = "
+                    <html>
+                    <body style='font-family: Arial, sans-serif; background-color: #0b0f1a; color: #fff; padding: 20px;'>
+                        <div style='max-width: 600px; margin: 0 auto; background: linear-gradient(180deg, rgba(79, 140, 255, 0.15), rgba(0, 0, 0, 0.4)); border-radius: 10px; padding: 30px;'>
+                            <h1 style='color: #4f8cff;'>" . htmlspecialchars($subject) . "</h1>
+                            <p>Hi {FULLNAME},</p>
+                            " . nl2br(htmlspecialchars($message)) . "
+                            <p style='margin-top: 30px; font-size: 12px; color: #cbd5e1;'>
+                                This email was sent by X Token Admin Team.<br>
+                                If you have any questions, please contact support.
+                            </p>
+                        </div>
+                    </body>
+                    </html>
+                ";
+                
                 foreach ($users as $user) {
-                    $body = "
-                        <html>
-                        <body style='font-family: Arial, sans-serif; background-color: #0b0f1a; color: #fff; padding: 20px;'>
-                            <div style='max-width: 600px; margin: 0 auto; background: linear-gradient(180deg, rgba(79, 140, 255, 0.15), rgba(0, 0, 0, 0.4)); border-radius: 10px; padding: 30px;'>
-                                <h1 style='color: #4f8cff;'>{$subject}</h1>
-                                <p>Hi {$user['fullname']},</p>
-                                " . nl2br(htmlspecialchars($message)) . "
-                                <p style='margin-top: 30px; font-size: 12px; color: #cbd5e1;'>
-                                    This email was sent by X Token Admin Team.<br>
-                                    If you have any questions, please contact support.
-                                </p>
-                            </div>
-                        </body>
-                        </html>
-                    ";
+                    // Personalize with user's name
+                    $body = str_replace('{FULLNAME}', htmlspecialchars($user['fullname']), $bodyTemplate);
                     
                     if (sendEmail($user['email'], $subject, $body)) {
                         $sentCount++;

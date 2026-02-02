@@ -10,6 +10,8 @@ requireLogin();
 $userId = getUserId();
 $user = getUserById($userId);
 $tokenPrice = (float)getSetting('x_token_price', 5.44);
+$minPurchase = (float)getSetting('min_purchase', 50);
+$maxPurchase = (float)getSetting('max_purchase', 1000000);
 
 $error = '';
 $success = '';
@@ -20,8 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_purchase'])) 
     $network = sanitize($_POST['network'] ?? '');
     $tokens = floatval($_POST['tokens'] ?? 0);
     
-    if ($tokens < 50) {
-        $error = 'Minimum purchase is 50 X tokens.';
+    if ($tokens < $minPurchase) {
+        $error = "Minimum purchase is {$minPurchase} X tokens.";
+    } elseif ($tokens > $maxPurchase) {
+        $error = "Maximum purchase is {$maxPurchase} X tokens.";
     } elseif (empty($coin) || empty($network)) {
         $error = 'Please select a payment method and network.';
     } else {
