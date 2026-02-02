@@ -24,7 +24,6 @@ try {
     
     // Calculate stats
     $totalPurchased = 0;
-    $bonusTokens = 0;
     foreach ($transactions as $tx) {
         if ($tx['status'] === 'completed') {
             $totalPurchased += $tx['amount'];
@@ -106,14 +105,6 @@ try {
                 <div class="card-title">Purchased Tokens</div>
                 <div class="stat-box">
                     <span class="stat-number"><?= formatNumber($totalPurchased, 2) ?></span>
-                    <span class="stat-unit">X</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Bonus Tokens</div>
-                <div class="stat-box">
-                    <span class="stat-number"><?= formatNumber($bonusTokens, 2) ?></span>
                     <span class="stat-unit">X</span>
                 </div>
             </div>

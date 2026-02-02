@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_withdrawal']))
                 $stmt = $pdo->prepare("INSERT INTO withdrawals (user_id, amount, wallet_address, status, created_at) VALUES (?, ?, ?, 'pending', NOW())");
                 $stmt->execute([$userId, $amount, $walletAddress]);
                 
-                // Deduct from balance (will be refunded if rejected)
+                // Deduct from balance temporarily (admin will refund if rejected via admin panel)
                 $stmt = $pdo->prepare("UPDATE balances SET x_token_balance = x_token_balance - ? WHERE user_id = ?");
                 $stmt->execute([$amount, $userId]);
                 

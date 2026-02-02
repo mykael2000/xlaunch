@@ -37,21 +37,9 @@ try {
 
 // Handle payment confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_payment'])) {
-    try {
-        // Keep status as pending, just mark that user confirmed payment
-        // Admin will verify and change status later
-        $stmt = $pdo->prepare("UPDATE transactions SET admin_verified = 0 WHERE id = ?");
-        $stmt->execute([$transaction['id']]);
-        
-        $success = 'Payment confirmation received. Your transaction is now pending admin verification.';
-        
-        // Refresh transaction data
-        $stmt = $pdo->prepare("SELECT * FROM transactions WHERE id = ?");
-        $stmt->execute([$transaction['id']]);
-        $transaction = $stmt->fetch();
-    } catch (Exception $e) {
-        $error = 'Failed to submit payment confirmation.';
-    }
+    // User has confirmed they made the payment
+    // Status remains 'pending' until admin verifies
+    $success = 'Payment confirmation received. Your transaction is now pending admin verification.';
 }
 
 // Get payment wallet address

@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $success = 'Profile updated successfully.';
             
             // Refresh user data
-            $user = getUserById($userId);
+            $user = getUserById($userId, true);
         } catch (Exception $e) {
             $error = 'Failed to update profile.';
         }
