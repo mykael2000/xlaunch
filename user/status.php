@@ -1,3 +1,20 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+$balance = getUserBalance($userId);
+$status = getUserStatus($userId);
+
+$tokenBalance = $balance['x_token_balance'];
+$contributionAmount = $status['contribution_amount'];
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -213,6 +230,7 @@
             <a href="my-x-token.php">My X Token</a>
             <a href="status.php" class="active">Status</a>
             <a href="how-to-buy.php">How to Buy</a>
+            <a href="../logout.php">Logout</a>
         </div>
     </div>
 
@@ -221,11 +239,11 @@
             <div style="display: flex; justify-content: space-between;">
                 <div>
                     <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Balance</span>
-                    <h2 style="font-size: 2.2rem; margin: 5px 0;">0 X</h2>
+                    <h2 style="font-size: 2.2rem; margin: 5px 0;"><?= formatNumber($tokenBalance, 2) ?> X</h2>
                 </div>
                 <div style="text-align: right;">
                     <span style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Current Tier</span>
-                    <h2 id="tier-name-top" class="glow-blue">Basic Status</h2>
+                    <h2 id="tier-name-top" class="glow-blue"><?= htmlspecialchars($status['status_level']) ?> Status</h2>
                 </div>
             </div>
 
@@ -250,7 +268,7 @@
     </div>
 
     <script>
-        const balance = 0;
+        const balance = <?= $tokenBalance ?>;
 
         const tiers = [{
                 name: "Bronze",

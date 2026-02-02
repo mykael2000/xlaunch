@@ -1,3 +1,41 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+$balance = getUserBalance($userId);
+$status = getUserStatus($userId);
+
+$tokenPrice = (float)getSetting('x_token_price', 5.44);
+$usdEquivalent = $balance['x_token_balance'] * $tokenPrice;
+
+// Get transaction history
+try {
+    $pdo = getDB();
+    $stmt = $pdo->prepare("SELECT * FROM transactions WHERE user_id = ? AND type = 'buy' ORDER BY created_at DESC");
+    $stmt->execute([$userId]);
+    $transactions = $stmt->fetchAll();
+    
+    // Calculate stats
+    $totalPurchased = 0;
+    foreach ($transactions as $tx) {
+        if ($tx['status'] === 'completed') {
+            $totalPurchased += $tx['amount'];
+        }
+    }
+    
+} catch (Exception $e) {
+    $transactions = [];
+    $totalPurchased = 0;
+    $bonusTokens = 0;
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -31,6 +69,7 @@
             <a href="my-x-token.php" class="active">My X Token</a>
             <a href="status.php">Status</a>
             <a href="how-to-buy.php">How to Buy</a>
+            <a href="../logout.php">Logout</a>
         </div>
     </div>
 
@@ -50,7 +89,7 @@
             <div class="card">
                 <div class="card-title">Token Balance</div>
                 <div class="stat-box">
-                    <span class="stat-number">0.00</span>
+                    <span class="stat-number"><?= formatNumber($balance['x_token_balance'], 2) ?></span>
                     <span class="stat-unit">X</span>
                 </div>
             </div>
@@ -58,22 +97,14 @@
             <div class="card">
                 <div class="card-title">Equivalent in USD</div>
                 <div class="stat-box">
-                    <span class="stat-number">$0.00</span>
+                    <span class="stat-number">$<?= formatNumber($usdEquivalent, 2) ?></span>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-title">Purchased Tokens</div>
                 <div class="stat-box">
-                    <span class="stat-number">0.00</span>
-                    <span class="stat-unit">X</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Bonus Tokens</div>
-                <div class="stat-box">
-                    <span class="stat-number">0.00</span>
+                    <span class="stat-number"><?= formatNumber($totalPurchased, 2) ?></span>
                     <span class="stat-unit">X</span>
                 </div>
             </div>
@@ -81,7 +112,7 @@
             <div class="card">
                 <div class="card-title">Total Contributed</div>
                 <div class="stat-box">
-                    <span class="stat-number">$0.00</span>
+                    <span class="stat-number">$<?= formatNumber($status['contribution_amount'], 2) ?></span>
                 </div>
             </div>
 
@@ -115,26 +146,42 @@
                     <div>Status</div>
                 </div>
 
-                                                            <div style="
-                        display:grid;
-                        grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
-                        padding:16px 20px;
-                        border-top:1px solid rgba(255,255,255,.06);
-                        align-items:center;
-                    ">
-                            <div class="muted">Feb 02, 2026</div>
+                <?php if (count($transactions) > 0): ?>
+                    <?php foreach ($transactions as $tx): ?>
+                        <div style="
+                            display:grid;
+                            grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
+                            padding:16px 20px;
+                            border-top:1px solid rgba(255,255,255,.06);
+                            align-items:center;
+                        ">
+                            <div class="muted"><?= date('M d, Y', strtotime($tx['created_at'])) ?></div>
 
                             <div>
-                                BNB                                <span class="muted">· BEP20</span>
+                                <?= htmlspecialchars($tx['crypto_type']) ?>                                <span class="muted">· <?= htmlspecialchars($tx['network']) ?></span>
                             </div>
 
-                            <div>5,000.00 X</div>
-                            <div>$27,200.00</div>
+                            <div><?= formatNumber($tx['amount'], 2) ?> X</div>
+                            <div>$<?= formatNumber($tx['usd_amount'], 2) ?></div>
 
                             <div>
-                                                                    <span style="color:#facc15;">Pending</span>
-                                                            </div>
+                                <?php 
+                                $statusColor = 'color:#facc15;'; // pending - yellow
+                                if ($tx['status'] === 'completed' || $tx['status'] === 'approved') {
+                                    $statusColor = 'color:#22c55e;'; // green
+                                } elseif ($tx['status'] === 'failed' || $tx['status'] === 'cancelled' || $tx['status'] === 'rejected') {
+                                    $statusColor = 'color:#ef4444;'; // red
+                                }
+                                ?>
+                                <span style="<?= $statusColor ?>"><?= ucfirst($tx['status']) ?></span>
+                            </div>
                         </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div style="padding:40px 20px; text-align:center; color:#848e9c;">
+                        No transactions yet. <a href="buy.php" style="color:#1D9BF0;">Buy your first tokens</a>
+                    </div>
+                <?php endif; ?>
                                     
             </div>
         </div>

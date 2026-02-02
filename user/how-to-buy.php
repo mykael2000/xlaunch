@@ -1,3 +1,15 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -184,6 +196,7 @@
             <a href="my-x-token.php" class="">My X Token</a>
             <a href="status.php" class="">Status</a>
             <a href="how-to-buy.php" class="active">How to Buy</a>
+            <a href="../logout.php">Logout</a>
         </div>
     </div>
 

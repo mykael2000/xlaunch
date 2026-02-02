@@ -1,0 +1,39 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database backups
+*.sql.gz
+*.sql.zip
+database/backups/
+
+# Uploads directory
+uploads/
+user_uploads/
+
+# PHP
+*.log
+vendor/
+composer.phar
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.tmp
+
+# Node modules (if any)
+node_modules/
+
+# Sensitive configuration (uncomment if needed)
+# includes/config.php
