@@ -1,4 +1,52 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
 
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+$tokenPrice = (float)getSetting('x_token_price', 5.44);
+
+$error = '';
+$success = '';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_purchase'])) {
+    $coin = sanitize($_POST['coin'] ?? '');
+    $network = sanitize($_POST['network'] ?? '');
+    $tokens = floatval($_POST['tokens'] ?? 0);
+    
+    if ($tokens < 50) {
+        $error = 'Minimum purchase is 50 X tokens.';
+    } elseif (empty($coin) || empty($network)) {
+        $error = 'Please select a payment method and network.';
+    } else {
+        // Calculate amounts
+        $usdAmount = $tokens * $tokenPrice;
+        $orderId = generateOrderId();
+        
+        try {
+            $pdo = getDB();
+            
+            // Create transaction record
+            $stmt = $pdo->prepare("INSERT INTO transactions (user_id, type, amount, crypto_type, usd_amount, network, order_id, status, created_at) VALUES (?, 'purchase', ?, ?, ?, ?, ?, 'pending', NOW())");
+            $stmt->execute([$userId, $tokens, $coin, $usdAmount, $network, $orderId]);
+            
+            $transactionId = $pdo->lastInsertId();
+            
+            // Redirect to payment page
+            header('Location: payment.php?order=' . $orderId);
+            exit;
+        } catch (Exception $e) {
+            $error = 'Failed to create order. Please try again.';
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -31,10 +79,23 @@
             <a href="my-x-token.php" class="">My X Token</a>
             <a href="status.php" class="">Status</a>
             <a href="how-to-buy.php" class="">How to Buy</a>
+            <a href="../logout.php">Logout</a>
         </div>
     </div>
 
     <div class="container buy-page">
+        
+        <?php if ($error): ?>
+            <div class="alert alert-error" style="margin-bottom:20px; padding:14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5;">
+                <?= htmlspecialchars($error) ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if ($success): ?>
+            <div class="alert alert-success" style="margin-bottom:20px; padding:14px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:8px; color:#86efac;">
+                <?= htmlspecialchars($success) ?>
+            </div>
+        <?php endif; ?>
 
         <h1 class="buy-title">Buy X Tokens</h1>
         <p class="buy-sub">Select your preferred cryptocurrency</p>
@@ -153,7 +214,7 @@
                 <p class="muted">
                     USD Equivalent:
                     <strong id="usdValue">$0.00</strong><br>
-                    1 X = $5.44                </p>
+                    1 X = $<?= formatNumber($tokenPrice, 2) ?>                </p>
             </div>
 
             <button type="button" class="btn center" id="openModalBtn">
@@ -196,7 +257,7 @@
     </div>
 
     <script>
-        const pricePerToken = 5.44;
+        const pricePerToken = <?= $tokenPrice ?>;
 
         const coinNetworks = {
             BTC: ["BTC"],

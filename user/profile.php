@@ -1,3 +1,75 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+$balance = getUserBalance($userId);
+
+$tokenPrice = (float)getSetting('x_token_price', 5.44);
+$usdEquivalent = $balance['x_token_balance'] * $tokenPrice;
+
+$error = '';
+$success = '';
+
+// Handle profile update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    $username = sanitize($_POST['username'] ?? '');
+    
+    if (empty($username)) {
+        $error = 'Username cannot be empty.';
+    } else {
+        try {
+            $pdo = getDB();
+            $stmt = $pdo->prepare("UPDATE users SET fullname = ? WHERE id = ?");
+            $stmt->execute([$username, $userId]);
+            
+            $success = 'Profile updated successfully.';
+            
+            // Refresh user data
+            $user = getUserById($userId);
+        } catch (Exception $e) {
+            $error = 'Failed to update profile.';
+        }
+    }
+}
+
+// Handle password change
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+    $currentPassword = $_POST['current_password'] ?? '';
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+    
+    if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
+        $error = 'All password fields are required.';
+    } elseif ($newPassword !== $confirmPassword) {
+        $error = 'New passwords do not match.';
+    } elseif (strlen($newPassword) < 6) {
+        $error = 'Password must be at least 6 characters.';
+    } else {
+        // Verify current password
+        if (password_verify($currentPassword, $user['password'])) {
+            try {
+                $pdo = getDB();
+                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $stmt->execute([$hashedPassword, $userId]);
+                
+                $success = 'Password changed successfully.';
+            } catch (Exception $e) {
+                $error = 'Failed to change password.';
+            }
+        } else {
+            $error = 'Current password is incorrect.';
+        }
+    }
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -33,24 +105,37 @@
                 <a href="my-x-token.php" class="">My X Token</a>
                 <a href="status.php" class="">Status</a>
                 <a href="how-to-buy.php" class="">How to Buy</a>
+                <a href="../logout.php">Logout</a>
             </div>
         </div>
 
         <div class="container">
 
             <h1 class="page-title blue">My Profile</h1>
+            
+            <?php if ($error): ?>
+                <div class="alert alert-error" style="margin-bottom:20px; padding:14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5;">
+                    <?= htmlspecialchars($error) ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($success): ?>
+                <div class="alert alert-success" style="margin-bottom:20px; padding:14px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:8px; color:#86efac;">
+                    <?= htmlspecialchars($success) ?>
+                </div>
+            <?php endif; ?>
 
             <div class="cards dashboard-cards">
                 <div class="card">
                     <p class="card-title">Token Balance</p>
                     <h2 class="card-value">
-                        0.00 <span>X</span>
+                        <?= formatNumber($balance['x_token_balance'], 2) ?> <span>X</span>
                     </h2>
                 </div>
 
                 <div class="card green-glow">
                     <p class="card-title">USD Value</p>
-                    <h2 class="card-value green">$0.00</h2>
+                    <h2 class="card-value green">$<?= formatNumber($usdEquivalent, 2) ?></h2>
                 </div>
             </div>
 
@@ -64,12 +149,12 @@
 
                     <label>Username</label>
                     <input type="text" name="username"
-                        value="Mykaeltech"
+                        value="<?= htmlspecialchars($user['fullname']) ?>"
                         required>
 
                     <label>Email Address</label>
                     <input type="email"
-                        value="eramehmichael2000@gmail.com"
+                        value="<?= htmlspecialchars($user['email']) ?>"
                         disabled>
 
                     <button class="btn" type="submit">Save Changes</button>

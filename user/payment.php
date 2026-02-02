@@ -1,3 +1,60 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+
+$orderId = sanitize($_GET['order'] ?? '');
+$error = '';
+$success = '';
+
+if (empty($orderId)) {
+    header('Location: buy.php');
+    exit;
+}
+
+// Get transaction details
+try {
+    $pdo = getDB();
+    $stmt = $pdo->prepare("SELECT * FROM transactions WHERE order_id = ? AND user_id = ?");
+    $stmt->execute([$orderId, $userId]);
+    $transaction = $stmt->fetch();
+    
+    if (!$transaction) {
+        header('Location: buy.php');
+        exit;
+    }
+} catch (Exception $e) {
+    header('Location: buy.php');
+    exit;
+}
+
+// Handle payment confirmation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_payment'])) {
+    try {
+        $stmt = $pdo->prepare("UPDATE transactions SET status = 'submitted' WHERE id = ?");
+        $stmt->execute([$transaction['id']]);
+        
+        $success = 'Payment confirmation submitted. Awaiting admin verification.';
+        
+        // Refresh transaction data
+        $stmt = $pdo->prepare("SELECT * FROM transactions WHERE id = ?");
+        $stmt->execute([$transaction['id']]);
+        $transaction = $stmt->fetch();
+    } catch (Exception $e) {
+        $error = 'Failed to submit payment confirmation.';
+    }
+}
+
+// Get payment wallet address
+$walletAddress = getWalletAddress($transaction['crypto_type'], $transaction['network']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -13,25 +70,47 @@
     <div class="container" style="max-width:520px; margin-top:90px;">
 
         <div class="card" style="padding:32px;">
+        
+            <?php if ($error): ?>
+                <div class="alert alert-error" style="margin-bottom:20px; padding:14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; color:#fca5a5;">
+                    <?= htmlspecialchars($error) ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($success): ?>
+                <div class="alert alert-success" style="margin-bottom:20px; padding:14px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:8px; color:#86efac;">
+                    <?= htmlspecialchars($success) ?>
+                </div>
+            <?php endif; ?>
 
-            <h1 style="text-align:center; margin-bottom:6px;">Waiting for Payment</h1>
+            <h1 style="text-align:center; margin-bottom:6px;">
+                <?php if ($transaction['status'] === 'submitted'): ?>
+                    Payment Submitted
+                <?php else: ?>
+                    Waiting for Payment
+                <?php endif; ?>
+            </h1>
 
             <p class="muted" style="text-align:center; margin-bottom:28px;">
-                Complete the payment using the details below
+                <?php if ($transaction['status'] === 'submitted'): ?>
+                    Your payment is being verified by our team
+                <?php else: ?>
+                    Complete the payment using the details below
+                <?php endif; ?>
             </p>
 
             <div class="tx-box">
                 <div class="tx-row">
                     <span>Order</span>
-                    <strong>#ORD-3968D19E65</strong>
+                    <strong>#<?= htmlspecialchars($transaction['order_id']) ?></strong>
                 </div>
             </div>
 
             <div class="tx-box">
-                <span class="muted">Send exactly</span>
+                <span class="muted">Token Amount</span>
                 <div class="copy-box">
                     <input type="text" id="copyAmount"
-                        value="3,808.00 USD" readonly>
+                        value="<?= formatNumber($transaction['amount'], 2) ?> X Tokens" readonly>
                     <button type="button" onclick="copyText('copyAmount', this)">Copy</button>
                 </div>
             </div>
@@ -39,7 +118,7 @@
             <div class="tx-box">
                 <div class="tx-row">
                     <span>Payment method</span>
-                    <strong>BTC · BTC</strong>
+                    <strong><?= htmlspecialchars($transaction['crypto_type']) ?> · <?= htmlspecialchars($transaction['network']) ?></strong>
                 </div>
             </div>
 
@@ -47,8 +126,15 @@
                 <span class="muted">Send to address</span>
                 <div class="copy-box">
                     <input type="text" id="copyAddress"
-                        value="bc1qnx7lf5psmg5kn9j4vxwcfyflgqujnj9fnt28mc" readonly>
+                        value="<?= htmlspecialchars($walletAddress ?: 'Not available') ?>" readonly>
                     <button type="button" onclick="copyText('copyAddress', this)">Copy</button>
+                </div>
+            </div>
+
+            <div class="tx-box">
+                <div class="tx-row">
+                    <span>USD Amount</span>
+                    <strong>$<?= formatNumber($transaction['usd_amount'], 2) ?></strong>
                 </div>
             </div>
 
@@ -58,6 +144,7 @@
                 <li>Your tokens will be credited after confirmation</li>
             </ul>
 
+            <?php if ($transaction['status'] === 'pending'): ?>
             <div style="display:flex; gap:14px; margin-top:30px;">
                 <form method="post" style="width:100%;">
                     <button type="submit" name="confirm_payment" class="btn" style="width:100%;">
@@ -69,6 +156,13 @@
                     Cancel Order
                 </a>
             </div>
+            <?php else: ?>
+            <div style="margin-top:30px;">
+                <a href="dashboard.php" class="btn" style="width:100%; display:block; text-align:center;">
+                    Back to Dashboard
+                </a>
+            </div>
+            <?php endif; ?>
 
         </div>
     </div>

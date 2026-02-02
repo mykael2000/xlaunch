@@ -1,4 +1,36 @@
+<?php
+define('X_TOKEN_APP', true);
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
 
+// Require login
+requireLogin();
+
+$userId = getUserId();
+$user = getUserById($userId);
+$balance = getUserBalance($userId);
+$status = getUserStatus($userId);
+
+// Get settings
+$tokenPrice = (float)getSetting('x_token_price', 5.44);
+$currentStage = getSetting('current_stage', 3);
+$tokensSold = (float)getSetting('tokens_sold', 5317977);
+$totalTokens = (float)getSetting('total_tokens', 6475000);
+
+// Calculate USD equivalent
+$usdEquivalent = $balance['x_token_balance'] * $tokenPrice;
+
+// Calculate progress percentage
+$progressPercent = ($tokensSold / $totalTokens) * 100;
+
+// Get recent transactions
+$pdo = getDB();
+$stmt = $pdo->prepare("SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+$stmt->execute([$userId]);
+$recentTransactions = $stmt->fetchAll();
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,7 +39,6 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="assets/style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 </head>
 
 <body>
@@ -27,11 +58,12 @@
 
         <div class="nav-links" id="navMenu">
             <a href="dashboard.php" class="active">Dashboard</a>
-            <a href="buy.php" class="">Buy Token</a>
-            <a href="profile.php" class="">Profile</a>
-            <a href="my-x-token.php" class="">My X Token</a>
-            <a href="status.php" class="">Status</a>
-            <a href="how-to-buy.php" class="">How to Buy</a>
+            <a href="buy.php">Buy Token</a>
+            <a href="profile.php">Profile</a>
+            <a href="my-x-token.php">My X Token</a>
+            <a href="status.php">Status</a>
+            <a href="how-to-buy.php">How to Buy</a>
+            <a href="../logout.php">Logout</a>
         </div>
     </div>
 
@@ -45,7 +77,7 @@
             <div class="card">
                 <p class="card-title">Balance</p>
                 <h2 class="card-value">
-                    0.00 <span>X</span>
+                    <?= formatNumber($balance['x_token_balance'], 2) ?> <span>X</span>
                 </h2>
                 <p class="muted">Your current X token balance</p>
                 <a href="how-to-buy.php" class="btn small">How to Buy →</a>
@@ -54,26 +86,44 @@
             <div class="card green-glow">
                 <p class="card-title">USD Equivalent</p>
                 <h2 class="card-value green">
-                    $0.00                </h2>
-                <p class="muted">1 X = $5.44 · Stage 3 Price</p>
+                    $<?= formatNumber($usdEquivalent, 2) ?>
+                </h2>
+                <p class="muted">1 X = $<?= formatNumber($tokenPrice, 2) ?> · Stage <?= $currentStage ?> Price</p>
             </div>
 
             <div class="card purple-glow">
                 <p class="card-title">Status</p>
                 <h2 class="card-value blue">
-                    Basic                </h2>
+                    <?= htmlspecialchars($status['status_level']) ?>
+                </h2>
                 <p class="muted">Based on your contribution</p>
 
+                <?php
+                $tierLimits = ['Basic' => 1000, 'Silver' => 5000, 'Gold' => 10000, 'Platinum' => 50000];
+                $nextTier = null;
+                $tierProgress = 0;
+                
+                foreach ($tierLimits as $tier => $limit) {
+                    if ($status['contribution_amount'] < $limit) {
+                        $nextTier = $tier;
+                        $tierProgress = ($status['contribution_amount'] / $limit) * 100;
+                        break;
+                    }
+                }
+                
+                if ($nextTier):
+                ?>
                 <div class="progress mini">
-                    <div class="progress-bar" style="width: 0%"></div>
+                    <div class="progress-bar" style="width: <?= min($tierProgress, 100) ?>%"></div>
                 </div>
+                <?php endif; ?>
 
                 <a href="buy.php" class="btn">Buy X Tokens Now →</a>
             </div>
 
         </div>
 
-        <!-- TWEET / ELON SECTION (UNTOUCHED) -->
+        <!-- TWEET / ELON SECTION -->
         <div class="tweet-box">
             <div class="tweet-header">
                 <img src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" alt="Elon Musk">
@@ -95,12 +145,12 @@
                 <p>
                     We extend a warm welcome as you embark on a unique opportunity to be part of the future of blockchain
                     technology and decentralized possibilities through X Coin. As we commence our presale stages, currently
-                    at Stage 3 with a price of $5.44, you have the exclusive chance to invest in X Coin before its value
+                    at Stage <?= $currentStage ?> with a price of $<?= formatNumber($tokenPrice, 2) ?>, you have the exclusive chance to invest in X Coin before its value
                     escalates in subsequent stages, culminating in the public sale at $27.50.
                 </p>
 
                 <p>
-                    Owning X Coin is more than a financial investment; it’s an active endorsement of a visionary project
+                    Owning X Coin is more than a financial investment; it's an active endorsement of a visionary project
                     propelling the progress of blockchain technology, laying the groundwork for a decentralized future.
                 </p>
 
@@ -117,7 +167,7 @@
             </div>
         </div>
 
-        <!-- TOKEN SALES PROGRESS (FIXED TO MATCH IMAGE 2) -->
+        <!-- TOKEN SALES PROGRESS -->
         <div class="token-progress-section">
 
             <div class="token-progress-title">
@@ -126,20 +176,20 @@
 
             <div class="token-progress-row">
                 <span class="token-progress-left">
-                    Raised Amount: 5,317,977 X
+                    Raised Amount: <?= formatNumber($tokensSold, 0) ?> X
                 </span>
 
                 <div class="token-progress-bar">
-                    <div class="token-progress-fill" style="width: 82.13%;"></div>
+                    <div class="token-progress-fill" style="width: <?= formatNumber($progressPercent, 2) ?>%;"></div>
                 </div>
 
                 <span class="token-progress-right">
-                    Total Tokens: 6,475,000 X
+                    Total Tokens: <?= formatNumber($totalTokens, 0) ?> X
                 </span>
             </div>
 
             <div class="token-progress-percent">
-                82.13% Complete
+                <?= formatNumber($progressPercent, 2) ?>% Complete
             </div>
 
             <div class="token-progress-action">
@@ -405,7 +455,7 @@ function toggleSupport() {
 
 async function loadUserMessages() {
     try {
-        const res = await fetch('./ajax/support.php');
+        const res = await fetch('../ajax/support.php');
         if (!res.ok) return;
 
         const data = await res.json();
@@ -432,7 +482,7 @@ async function sendUserMsg() {
     fd.append('message', msg);
     fd.append('sender', 'user');
 
-    await fetch('./ajax/support.php', { method: 'POST', body: fd });
+    await fetch('../ajax/support.php', { method: 'POST', body: fd });
     input.value = '';
     loadUserMessages();
 }
@@ -446,12 +496,13 @@ setInterval(() => {
     const win = document.getElementById('support-window');
     if (win.classList.contains('active')) loadUserMessages();
 }, 4000);
-</script>    <script>
-        function toggleMenu() {
-            const menu = document.getElementById("navMenu");
-            menu.classList.toggle("active");
-        }
-    </script>
+</script>    
+<script>
+    function toggleMenu() {
+        const menu = document.getElementById("navMenu");
+        menu.classList.toggle("active");
+    }
+</script>
 </body>
 
 </html>
